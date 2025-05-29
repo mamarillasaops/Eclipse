@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moon Distance Simulation - PixiJS</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f5f5f5;
+            font-family: Arial, sans-serif;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+        }
+        
+        h1 {
+            margin-bottom: 30px;
+            color: #333;
+        }
+        
+        #gameContainer {
+            margin-bottom: 30px;
+            border: 3px solid #333;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        .controls {
+            width: 100%;
+        }
+        
+        .slider-container {
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .slider-label {
+            margin-bottom: 8px;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .distance-info {
+            font-size: 14px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            -webkit-appearance: none;
+            outline: none;
+            background: linear-gradient(to right, #ff6b35, #f7931e, #ffd23f);
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            border: 2px solid #007bff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: white;
+            cursor: pointer;
+            border: 2px solid #007bff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .value-display {
+            margin-top: 15px;
+            padding: 10px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #333;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Solar Eclipse: Moon Getting Farther</h1>
+        
+        <div id="gameContainer"></div>
+        
+        <div class="controls">
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>Moon Distance</span>
+                </div>
+                <input type="range" id="distanceSlider" min="0" max="100" value="100">
+            </div>
+            
+            <div class="value-display">
+                <div class="stats">
+                    <div class="stat-item">
+                        <div>Eclipse Coverage</div>
+                        <div class="stat-value" id="sizeDisplay">100%</div>
+                    </div>
+                    <div class="stat-item">
+                        <div>Moon Distance</div>
+                        <div class="stat-value" id="distanceDisplay">384,400 km</div>
+                    </div>
+                    <div class="stat-item">
+                        <div>Angular Size</div>
+                        <div class="stat-value" id="angularDisplay">0.52°</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.3.2/pixi.min.js"></script>
+    <script>
+        // Create PixiJS application
+        const app = new PIXI.Application({
+            width: 600,
+            height: 400,
+            backgroundColor: 0x000000,
+            antialias: true
+        });
+
+        // Add canvas to container
+        document.getElementById('gameContainer').appendChild(app.view);
+
+        // Create space background with stars
+        const starsContainer = new PIXI.Container();
+        app.stage.addChild(starsContainer);
+
+        // Generate random stars
+        for (let i = 0; i < 200; i++) {
+            const star = new PIXI.Graphics();
+            star.beginFill(0xFFFFFF);
+            star.drawCircle(0, 0, Math.random() * 1.5 + 0.5);
+            star.endFill();
+            
+            star.x = Math.random() * app.screen.width;
+            star.y = Math.random() * app.screen.height;
+            star.alpha = Math.random() * 0.8 + 0.2;
+            
+            starsContainer.addChild(star);
+        }
+
+        // Create Sun (orange circle)
+        const sun = new PIXI.Graphics();
+        sun.beginFill(0xFF6B35);
+        sun.drawCircle(0, 0, 83);
+        sun.endFill();
+        sun.x = app.screen.width / 2;
+        sun.y = app.screen.height / 2;
+        app.stage.addChild(sun);
+
+        // Add Sun corona effects with texture/patterns
+        const coronaOuter = new PIXI.Graphics();
+        // Create outer corona with radial streaks
+        for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2;
+            const length = 140 + Math.random() * 20;
+            const width = 8 + Math.random() * 4;
+            
+            coronaOuter.beginFill(0xFF6B35, 0.12);
+            coronaOuter.moveTo(0, 0);
+            coronaOuter.lineTo(Math.cos(angle) * length, Math.sin(angle) * length);
+            coronaOuter.lineTo(Math.cos(angle + 0.3) * (length * 0.8), Math.sin(angle + 0.3) * (length * 0.8));
+            coronaOuter.lineTo(0, 0);
+            coronaOuter.endFill();
+        }
+        coronaOuter.x = app.screen.width / 2;
+        coronaOuter.y = app.screen.height / 2;
+        app.stage.addChildAt(coronaOuter, app.stage.children.indexOf(sun));
+
+        const coronaMiddle = new PIXI.Graphics();
+        // Create middle corona with different pattern
+        for (let i = 0; i < 16; i++) {
+            const angle = (i / 16) * Math.PI * 2;
+            const length = 100 + Math.random() * 25;
+            
+            coronaMiddle.beginFill(0xFF6B35, 0.2);
+            coronaMiddle.drawPolygon([
+                0, 0,
+                Math.cos(angle) * length, Math.sin(angle) * length,
+                Math.cos(angle + 0.2) * (length * 0.9), Math.sin(angle + 0.2) * (length * 0.9),
+                Math.cos(angle + 0.1) * (length * 0.6), Math.sin(angle + 0.1) * (length * 0.6)
+            ]);
+            coronaMiddle.endFill();
+        }
+        coronaMiddle.x = app.screen.width / 2;
+        coronaMiddle.y = app.screen.height / 2;
+        app.stage.addChildAt(coronaMiddle, app.stage.children.indexOf(sun));
+
+        const sunGlow = new PIXI.Graphics();
+        // Create inner glow with subtle texture
+        sunGlow.beginFill(0xFF6B35, 0.4);
+        sunGlow.drawCircle(0, 0, 105);
+        sunGlow.endFill();
+        
+        // Add inner streaks
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            sunGlow.beginFill(0xFF6B35, 0.3);
+            sunGlow.drawPolygon([
+                Math.cos(angle) * 85, Math.sin(angle) * 85,
+                Math.cos(angle) * 110, Math.sin(angle) * 110,
+                Math.cos(angle + 0.3) * 110, Math.sin(angle + 0.3) * 110,
+                Math.cos(angle + 0.3) * 85, Math.sin(angle + 0.3) * 85
+            ]);
+            sunGlow.endFill();
+        }
+        
+        sunGlow.x = app.screen.width / 2;
+        sunGlow.y = app.screen.height / 2;
+        app.stage.addChildAt(sunGlow, app.stage.children.indexOf(sun));
+
+        // Create Moon container
+        const moonContainer = new PIXI.Container();
+        app.stage.addChild(moonContainer);
+
+        // Create Moon (white circle with border)
+        const moon = new PIXI.Graphics();
+        moon.beginFill(0xF5F5F5);
+        moon.drawCircle(0, 0, 85);
+        moon.endFill();
+        moon.lineStyle(3, 0x000000);
+        moon.drawCircle(0, 0, 85);
+        moonContainer.addChild(moon);
+
+        // Add moon craters for detail
+        const crater1 = new PIXI.Graphics();
+        crater1.beginFill(0xE0E0E0);
+        crater1.drawCircle(-28, -20, 15);
+        crater1.endFill();
+        moonContainer.addChild(crater1);
+
+        const crater2 = new PIXI.Graphics();
+        crater2.beginFill(0xE0E0E0);
+        crater2.drawCircle(20, 15, 12);
+        crater2.endFill();
+        moonContainer.addChild(crater2);
+
+        const crater3 = new PIXI.Graphics();
+        crater3.beginFill(0xE0E0E0);
+        crater3.drawCircle(-15, 35, 10);
+        crater3.endFill();
+        moonContainer.addChild(crater3);
+
+        // Create Moon text
+        const moonText = new PIXI.Text('Moon', {
+            fontFamily: 'Times New Roman',
+            fontSize: 36,
+            fill: 0x000000,
+            fontStyle: 'italic',
+            align: 'center'
+        });
+        moonText.anchor.set(0.5);
+        moonContainer.addChild(moonText);
+
+        // Position moon container at center
+        moonContainer.x = app.screen.width / 2;
+        moonContainer.y = app.screen.height / 2;
+
+        // Get DOM elements
+        const slider = document.getElementById('distanceSlider');
+        const sizeDisplay = document.getElementById('sizeDisplay');
+        const distanceDisplay = document.getElementById('distanceDisplay');
+        const angularDisplay = document.getElementById('angularDisplay');
+
+        // Set initial value (left side = closest)
+        slider.value = 0;
+
+        // Animation variables
+        let targetScale = 1;
+        let currentScale = 1;
+
+        // Slider input handler
+        slider.oninput = function() {
+            // Reverse the slider: 0 = largest (scale 1), 100 = smallest
+            const sliderValue = (100 - this.value) / 100;
+            targetScale = Math.max(0.1, sliderValue); // Minimum 10% size
+            
+            // Calculate realistic values
+            const baseDistance = 384400; // km (actual moon distance at slider left)
+            const maxDistance = baseDistance * 10; // 10x farther at slider right
+            const currentDistance = baseDistance + (maxDistance - baseDistance) * (this.value / 100);
+            
+            // Calculate angular size (inversely proportional to distance)
+            const baseAngularSize = 0.52; // degrees
+            const currentAngularSize = baseAngularSize * (baseDistance / currentDistance);
+            
+            // Update displays
+            const coveragePercent = Math.round(sliderValue * 100);
+            
+            // Show eclipse type
+            if (sliderValue >= 0.99) {
+                sizeDisplay.textContent = "Total Eclipse";
+            } else if (sliderValue > 0.8) {
+                sizeDisplay.textContent = coveragePercent + "% (Annular)";
+            } else {
+                sizeDisplay.textContent = coveragePercent + "% (Partial)";
+            }
+            
+            distanceDisplay.textContent = Math.round(currentDistance).toLocaleString() + ' km';
+            angularDisplay.textContent = currentAngularSize.toFixed(3) + '°';
+        };
+
+        // Smooth animation loop
+        app.ticker.add(() => {
+            // Smooth scaling animation
+            currentScale += (targetScale - currentScale) * 0.1;
+            moonContainer.scale.set(currentScale);
+            
+            // Subtle floating animation for stars
+            starsContainer.children.forEach((star, index) => {
+                star.alpha = 0.2 + Math.sin(Date.now() * 0.001 + index) * 0.1;
+            });
+            
+            // Animated solar corona effects
+            const time = Date.now() * 0.001;
+            
+            // Inner glow - faster pulse
+            sunGlow.alpha = 0.4 + Math.sin(time * 2) * 0.15;
+            sunGlow.scale.set(1 + Math.sin(time * 3) * 0.05);
+            
+            // Middle corona - medium pulse with rotation
+            coronaMiddle.alpha = 0.25 + Math.sin(time * 1.5 + 1) * 0.1;
+            coronaMiddle.rotation += 0.002;
+            coronaMiddle.scale.set(1 + Math.sin(time * 2.5) * 0.08);
+            
+            // Outer corona - slow, dramatic pulse
+            coronaOuter.alpha = 0.15 + Math.sin(time * 0.8 + 2) * 0.08;
+            coronaOuter.rotation -= 0.001;
+            coronaOuter.scale.set(1 + Math.sin(time * 1.2) * 0.12);
+        });
+
+        // Initialize display
+        slider.oninput();
+    </script>
+</body>
+</html>
